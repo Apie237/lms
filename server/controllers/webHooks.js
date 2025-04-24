@@ -34,21 +34,35 @@ export const clerkWebhooks = async (req, res) => {
         switch (type) {
             case 'user.created': {
                 try {
-                    // Additional validation
-                    if (!data.id || !data.email_addresses || !data.email_addresses[0]) {
+                    // Extract email from the first email address entry
+                    const email = data.email_addresses && data.email_addresses.length > 0 
+                        ? data.email_addresses[0].email_address 
+                        : null;
+                        
+                    if (!data.id || !email) {
+                        console.error("Missing required user data:", { id: data.id, email });
                         return res.status(400).json({ 
                             success: false, 
                             error: "Missing required user data" 
                         });
                     }
                     
+                    // Handle missing name fields by using email or a placeholder
+                    const firstName = data.first_name || '';
+                    const lastName = data.last_name || '';
+                    const name = `${firstName} ${lastName}`.trim() || email.split('@')[0] || 'User';
+                    
+                    // Use profile_image_url as a fallback
+                    const imageUrl = data.image_url || data.profile_image_url || 'https://www.gravatar.com/avatar?d=mp';
+                    
                     const userData = {
                         _id: data.id,
-                        name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-                        email: data.email_addresses[0].email_address,
-                        imageUrl: data.image_url || '',
+                        name,
+                        email,
+                        imageUrl,
                     };
                     
+                    console.log("Creating user:", userData);
                     await User.create(userData);
                     console.log("User created successfully:", data.id);
                     return res.status(201).json({ success: true });
