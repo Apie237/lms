@@ -3,18 +3,21 @@ import User from "../models/User.js";
 
 // API controller function to manage clerk user with database
 export const clerkWebhooks = async (req, res) => {
+    console.log("Received webhook:", type);
+    console.log("Headers:", req.headers);
     try {
         // Verify webhook signature
         const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
-        
+
         await whook.verify(JSON.stringify(req.body), {
             "svix-id": req.headers["svix-id"],
             "svix-timestamp": req.headers["svix-timestamp"],
             "svix-signature": req.headers["svix-signature"],
+
         });
-        
+
         const { data, type } = req.body;
-        
+
         switch (type) {
             case 'user.created': {
                 const userData = {
@@ -27,7 +30,7 @@ export const clerkWebhooks = async (req, res) => {
                 res.json({});
                 break;
             }
-            
+
             case 'user.updated': {
                 const userData = {
                     email: data.email_addresses[0].email_address, // Fixed: email_addresses instead of email_address
@@ -38,19 +41,19 @@ export const clerkWebhooks = async (req, res) => {
                 res.json({});
                 break;
             }
-            
+
             case 'user.deleted': {
                 await User.findByIdAndDelete(data.id);
                 res.json({});
                 break;
             }
-            
+
             default:
                 res.json({}); // Added response for default case
                 break;
         }
     } catch (error) {
         console.error("Clerk webhook error:", error); // Added error logging
-        res.status(400).json({success: false, message: error.message}); // Added status code
+        res.status(400).json({ success: false, message: error.message }); // Added status code
     }
 }
