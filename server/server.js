@@ -2,29 +2,43 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './configs/mongodb.js';
-import { clerkWebhooks } from './controllers/webHooks.js';
+import { clerkWebhooks, stripeWebhooks } from './controllers/webHooks.js';
+import educatorRouter from './routes/educatorRoute.js';
+import { clerkMiddleware } from '@clerk/express';
+import connectCloudinary from './configs/cloudinary.js';
+import courseRouter from './routes/courseRoute.js';
+import userRouter from './routes/userRoute.js';
 
 dotenv.config();
 
 // Initialize express app
 const app = express();
 
-// Middlewares
+// Global middleware
 app.use(cors());
-app.use(express.json()); // Add this global middleware for JSON parsing
+app.use(clerkMiddleware());
+
+
+// Special route for Stripe webhooks - must come BEFORE express.json() middleware
+app.post('/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
+
+// JSON parsing middleware for all other routes
+app.use(express.json());
 
 // Connect to MongoDB
-// This should be in an async function, not at the top level with await
 const startServer = async () => {
   try {
     await connectDB();
+    await connectCloudinary();
     
-    // Routes
+    // Regular routes
     app.get('/', (req, res) => {
       res.send('Hello World!');
     });
-    
-    app.post('/clerk', clerkWebhooks); // No need to add express.json() here since it's global now
+    app.post('/clerk', clerkWebhooks);
+    app.use('/api/educator', educatorRouter);
+    app.use('/api/course', courseRouter);
+    app.use('/api/user', userRouter);
     
     const PORT = process.env.PORT || 5000;
     
