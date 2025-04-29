@@ -1,18 +1,30 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Loading from '../student/Loading';
+import axios from 'axios'; // Missing import
+import { toast } from 'react-toastify'; // Missing import
 
 const MyCourses = () => {
-  const { currency, allCourses } = useContext(AppContext);
-  const [courses, setCourses] = useState(null)
+  const { currency, backendUrl, isEducator, getToken } = useContext(AppContext);
+  const [courses, setCourses] = useState(null);
   
   const fetchEducatorCourses = async () => {
-    setCourses(allCourses)
-  }
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(backendUrl + '/api/educator/courses', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      data.success && setCourses(data.courses);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
   
   useEffect(() => {
-    fetchEducatorCourses()
-  }, [allCourses]) 
+    if(isEducator) {
+      fetchEducatorCourses();
+    }
+  }, [isEducator]);
   
   return courses ? (
     <div className="flex-1 flex flex-col md:p-8 md:pb-0 p-4 pt-8 pb-0">
@@ -29,24 +41,39 @@ const MyCourses = () => {
               </tr>
             </thead>
             <tbody className='text-sm text-gray-500'>
-              {courses.map((course) =>(
-                <tr key={course._id} className='border-b border-gray-500/20 hover:bg-gray-50'>
-                  <td className='md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate'>
-                    <img src={course.courseThumbnail} alt="Course Image" className='w-16 h-12 object-cover rounded' />
-                    <span className='hidden truncate md:block'>{course.courseTitle}</span>
-                  </td>
-                  <td className='px-4 py-3'>{currency} {Math.floor(course.enrolledStudents.length * (course.coursePrice - course.discount * course.coursePrice / 100))}</td>
-                  <td className='px-4 py-3'>{course.enrolledStudents.length}</td>
-                  <td className='px-4 py-3'>{new Date(course.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
+              {courses.map((course) => {
+                // Safely handle enrolledStudents that might be undefined or null
+                const studentCount = course.enrolledStudents?.length || 0;
+                const coursePrice = course.coursePrice || 0;
+                const discount = course.discount || 0;
+                
+                return (
+                  <tr key={course._id} className='border-b border-gray-500/20 hover:bg-gray-50'>
+                    <td className='md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate'>
+                      <img 
+                        src={course.courseThumbnail || '/placeholder-image.jpg'} 
+                        alt="Course Image" 
+                        className='w-16 h-12 object-cover rounded' 
+                      />
+                      <span className='hidden truncate md:block'>{course.courseTitle || 'Untitled Course'}</span>
+                    </td>
+                    <td className='px-4 py-3'>
+                      {currency} {Math.floor(studentCount * (coursePrice - discount * coursePrice / 100))}
+                    </td>
+                    <td className='px-4 py-3'>{studentCount}</td>
+                    <td className='px-4 py-3'>
+                      {course.createdAt ? new Date(course.createdAt).toLocaleDateString() : 'N/A'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
       <div className="h-16"></div>
     </div>
-  ) : <Loading />
-}
+  ) : <Loading />;
+};
 
 export default MyCourses;

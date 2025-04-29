@@ -73,7 +73,7 @@ export const purchaseCourse = async (req, res) => {
 
         // Creating Stripe checkout session
         const session = await stripeInstance.checkout.sessions.create({
-            success_url: `${origin}/loading/my-enrollments`, // Fixed template literals
+            success_url: `${origin}/my-enrollments`, // Fixed template literals
             cancel_url: `${origin}/`, // Fixed template literals
             line_items: lineItems,
             mode: "payment",
@@ -105,7 +105,8 @@ export const updateUserCourseProgress = async (req, res) => {
             await courseProgress.create({
                 userId,
                 courseId,
-                lectureCompleted: [lectureId]
+                lectureCompleted: [lectureId],
+                completed: false
             })
         }
 
@@ -154,7 +155,7 @@ export const addUserRating = async (req, res) => {
         } else {
             course.courseRatings.push({userId, rating});
         }
-        await course.asave()
+        await course.save()
 
         return res.json({success: true, message: 'Rating added'})
     } catch (error) {
